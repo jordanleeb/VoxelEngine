@@ -1,6 +1,7 @@
 package voxelengine;
 
 import static org.lwjgl.opengl.GL20.*;
+import org.joml.Matrix4f;
 
 public class Shader {
     // Handle to the compiled and linked shader program on the GPU
@@ -35,6 +36,13 @@ public class Shader {
         // Clean up, deleting individual shaders
         glDeleteShader(vertexShaderId);
         glDeleteShader(fragmentShaderId);
+    }
+    
+    public void setUniform(String name, Matrix4f matrix) {
+        int location = glGetUniformLocation(programId, name);
+        float[] data = new float[16];
+        matrix.get(data);
+        glUniformMatrix4fv(location, false, data);
     }
     
     public void use() {

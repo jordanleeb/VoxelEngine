@@ -12,12 +12,14 @@ public class VoxelEngine {
 
     private static final String VERTEX_SHADER_SOURCE = """
     #version 330 core
-    layout (location = 0) in vec3 aPos;    // receives attribute 0 (position)
-    layout (location = 1) in vec3 aColor;  // receives attribute 1 (color)
-    out vec3 vColor;                       // sends color to fragment shader
+    layout (location = 0) in vec3 aPos;
+    layout (location = 1) in vec3 aColor;
+    uniform mat4 view;
+    uniform mat4 projection;
+    out vec3 vColor;
     void main() {
-        vColor = aColor;                   // pass color through
-        gl_Position = vec4(aPos, 1.0);     // set vertex position
+        vColor = aColor;
+        gl_Position = projection * view * vec4(aPos, 1.0);
     }""";
     private static final String FRAGMENT_SHADER_SOURCE = """
     #version 330 core
@@ -28,8 +30,14 @@ public class VoxelEngine {
     }""";
 
     private long window;   // The window handle
+    private Camera camera;
     private Shader shader;
     private Mesh mesh;
+    
+    private double lastFrameTime;
+    
+    private double lastMouseX, lastMouseY;
+    private boolean firstMouse = true;
 
     public void run() {
         init();
@@ -86,6 +94,9 @@ public class VoxelEngine {
 
         // Initialize shader
         this.shader = new Shader(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
+        
+        // Initialize camera
+        this.camera = new Camera();
 
         // Initialize mesh
         float[] vertices = {
@@ -102,9 +113,34 @@ public class VoxelEngine {
         };
 
         this.mesh = new Mesh(vertices, indices);
+        
+        // Set cursor callback for camera rotation
+        glfwSetCursorPosCallback(window, (win, xpos, ypos) -> {
+            if (firstMouse) {
+                lastMouseX = xpos;
+                lastMouseY = ypos;
+                firstMouse = false;
+                return;
+            }
+
+            float dx = (float) (xpos - lastMouseX);
+            float dy = (float) (lastMouseY - ypos);  // inverted: moving mouse up = positive pitch
+
+            lastMouseX = xpos;
+            lastMouseY = ypos;
+
+            float sensitivity = 0.1f;
+            camera.rotate(dy * sensitivity, dx * sensitivity);
+        });
+        
+        // Hide and lock cursor to window
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
         // Make the window visible
         glfwShowWindow(window);
+        
+        // Initialize last frame time
+        lastFrameTime = glfwGetTime();
     }
 
     private void loop() {
@@ -114,11 +150,33 @@ public class VoxelEngine {
         // Run the rendering loop until the user has attempted to close
         // the window
         while (!glfwWindowShouldClose(window)) {
+            // Delta time
+            double currentTime = glfwGetTime();
+            float deltaTime = (float) (currentTime - lastFrameTime);
+            lastFrameTime = currentTime;
+            
+            // Camera input
+            float speed = 5.0f * deltaTime;
+            float forward = 0.0f, right = 0.0f, up = 0.0f;
+            
+            if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) forward += speed;
+            if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) forward -= speed;
+            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) right -= speed;
+            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) right += speed;
+            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) up += speed;
+            if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) up -= speed;
+            
+            camera.move(forward, right, up);
+            
             // Clear the framebuffer
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             // Draw
             shader.use();
+            
+            shader.setUniform("view", camera.getViewMatrix());
+            shader.setUniform("projection", camera.getProjectionMatrix());
+            
             mesh.draw();
 
             // Swap the color buffers
