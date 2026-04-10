@@ -18,10 +18,11 @@ public class Camera {
         this.projectionMatrix = new Matrix4f();
         
         projectionMatrix.perspective(
-            (float) Math.toRadians(70),  // field of view
-            800f / 600f,                 // aspect ratio (matches your window)
-            0.01f,                       // near clipping plane
-            1000f                        // far clipping plane
+            (float) Math.toRadians(70), // field of view
+            800f / 600f,                // aspect ratio
+                                        // TODO: update on window resize
+            0.01f,                      // near clipping plane
+            1000f                       // far clipping plane
         );
     }
     

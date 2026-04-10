@@ -30,7 +30,7 @@ public class Shader {
         glAttachShader(programId, fragmentShaderId);
         glLinkProgram(programId);
         
-        if(glGetProgrami(programId, GL_LINK_STATUS) == GL_FALSE)
+        if (glGetProgrami(programId, GL_LINK_STATUS) == GL_FALSE)
             throw new RuntimeException("Program linking failed:\n" + glGetProgramInfoLog(programId));
         
         // Clean up, deleting individual shaders

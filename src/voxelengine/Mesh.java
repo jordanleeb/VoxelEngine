@@ -21,11 +21,11 @@ public class Mesh {
         glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
         
         // Define vertex layout
-        // Attribute 0: position (starts at byte 0)
+        // Attribute 0: position — 6 floats * 4 bytes = 24 stride, starts at byte 0
         glVertexAttribPointer(0, 3, GL_FLOAT, false, 24, 0);
         glEnableVertexAttribArray(0);
-        
-        // Attribute 1: color (starts at byte 12, after 3 position floats)
+
+        // Attribute 1: color — 3 floats * 4 bytes = 12 offset
         glVertexAttribPointer(1, 3, GL_FLOAT, false, 24, 12);
         glEnableVertexAttribArray(1);
         

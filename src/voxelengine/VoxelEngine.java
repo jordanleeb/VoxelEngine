@@ -12,11 +12,11 @@ public class VoxelEngine {
 
     private static final String VERTEX_SHADER_SOURCE = """
     #version 330 core
-    layout (location = 0) in vec3 aPos;
-    layout (location = 1) in vec3 aColor;
-    uniform mat4 view;
-    uniform mat4 projection;
-    out vec3 vColor;
+    layout (location = 0) in vec3 aPos;    // vertex position
+    layout (location = 1) in vec3 aColor;  // vertex color
+    uniform mat4 view;                     // camera view matrix
+    uniform mat4 projection;               // perspective projection matrix
+    out vec3 vColor;                       // passed to fragment shader
     void main() {
         vColor = aColor;
         gl_Position = projection * view * vec4(aPos, 1.0);
@@ -33,9 +33,8 @@ public class VoxelEngine {
     private Camera camera;
     private Shader shader;
     private Mesh mesh;
-    
+
     private double lastFrameTime;
-    
     private double lastMouseX, lastMouseY;
     private boolean firstMouse = true;
 
