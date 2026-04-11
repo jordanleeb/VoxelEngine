@@ -14,19 +14,36 @@ public class VoxelEngine {
     #version 330 core
     layout (location = 0) in vec3 aPos;    // vertex position
     layout (location = 1) in vec3 aColor;  // vertex color
+    layout (location = 2) in float aAxis;  // face axis for grid lines
     uniform mat4 view;                     // camera view matrix
     uniform mat4 projection;               // perspective projection matrix
     out vec3 vColor;                       // passed to fragment shader
+    out vec3 vPos;                         // world position for grid lines
+    flat out float vAxis;                  // which axis this face is on
     void main() {
         vColor = aColor;
+        vPos = aPos;
+        vAxis = aAxis;
         gl_Position = projection * view * vec4(aPos, 1.0);
     }""";
     private static final String FRAGMENT_SHADER_SOURCE = """
     #version 330 core
     in vec3 vColor;                        // receives color from vertex shader
+    in vec3 vPos;                          // world position for grid lines
+    flat in float vAxis;                   // which axis this face is on
     out vec4 FragColor;                    // the final pixel color
     void main() {
-        FragColor = vec4(vColor, 1.0);     // use it as the pixel color
+        vec3 f = fract(vPos);
+        float edge = 0.05;
+        bool grid = false;
+        if (vAxis != 0.0 && (f.x < edge || f.x > 1.0 - edge)) grid = true;
+        if (vAxis != 1.0 && (f.y < edge || f.y > 1.0 - edge)) grid = true;
+        if (vAxis != 2.0 && (f.z < edge || f.z > 1.0 - edge)) grid = true;
+        if (grid) {
+            FragColor = vec4(vColor * 0.3, 1.0);
+        } else {
+            FragColor = vec4(vColor, 1.0);
+        }
     }""";
 
     private long window;   // The window handle
@@ -90,6 +107,7 @@ public class VoxelEngine {
         glfwMakeContextCurrent(window);
 
         GL.createCapabilities();
+        glEnable(GL_DEPTH_TEST);
 
         // Initialize shader
         this.shader = new Shader(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
@@ -97,21 +115,17 @@ public class VoxelEngine {
         // Initialize camera
         this.camera = new Camera();
 
-        // Initialize mesh
-        float[] vertices = {
-            // x,     y,    z,    r,    g,    b
-            -0.5f, 0.5f, 0.0f, 1.0f, 0.0f, 0.0f, // top-left (red)
-            0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 0.0f, // top-right (green)
-            0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f, // bottom-right (blue)
-            -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, 0.0f, // bottom-left (yellow)
-        };
-
-        int[] indices = {
-            0, 1, 2, // first triangle
-            2, 3, 0, // second triangle
-        };
-
-        this.mesh = new Mesh(vertices, indices);
+        // Create test octree
+        Octree tree = new Octree(16);
+        java.util.Random rand = new java.util.Random();
+        for (int x = 0; x < 16; x++)
+            for (int y = 0; y < 16; y++)
+                for (int z = 0; z < 16; z++)
+                    if (rand.nextFloat() < 0.3f)
+                        tree.set(x, y, z, true);
+        
+        // Build test mesh from octree
+        this.mesh = ChunkMesher.buildMesh(tree);
         
         // Set cursor callback for camera rotation
         glfwSetCursorPosCallback(window, (win, xpos, ypos) -> {
