@@ -140,7 +140,7 @@ public class VoxelEngine {
         this.shader = new Shader(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
         
         // Initialize camera
-        this.camera = new Camera();
+        this.camera = new Camera(32.0f, 50.0f, 32.0f, -30.0f, -90.0f);
 
         // Create test octree
         Octree tree = new Octree(64);

@@ -29,8 +29,8 @@ public class SliceExtractor {
                 }
 
                 // Positive face: solid here, air ahead
-                boolean posNeighbor = false;
                 if (layer + 1 < size) {
+                    boolean posNeighbor = false;
                     if (axis == 0) {
                         posNeighbor = tree.get(x + 1, y, z);
                     } else if (axis == 1) {
@@ -38,14 +38,14 @@ public class SliceExtractor {
                     } else {
                         posNeighbor = tree.get(x, y, z + 1);
                     }
+                    if (!posNeighbor) {
+                        posSlice[row][col] = true;
+                    }
                 }
-                if (!posNeighbor) {
-                    posSlice[row][col] = true;
-                }
-
+                
                 // Negative face: solid here, air behind
-                boolean negNeighbor = false;
                 if (layer - 1 >= 0) {
+                    boolean negNeighbor = false;
                     if (axis == 0) {
                         negNeighbor = tree.get(x - 1, y, z);
                     } else if (axis == 1) {
@@ -53,9 +53,9 @@ public class SliceExtractor {
                     } else {
                         negNeighbor = tree.get(x, y, z - 1);
                     }
-                }
-                if (!negNeighbor) {
-                    negSlice[row][col] = true;
+                    if (!negNeighbor) {
+                        negSlice[row][col] = true;
+                    }
                 }
             }
         }

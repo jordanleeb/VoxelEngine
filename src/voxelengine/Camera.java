@@ -10,10 +10,10 @@ public class Camera {
     private Matrix4f viewMatrix;
     private Matrix4f projectionMatrix;
     
-    public Camera() {
-        this.position = new Vector3f(0.0f, 0.0f, 3.0f);
-        this.pitch = 0.0f;
-        this.yaw = -90.0f;
+    public Camera(float x, float y, float z, float pitch, float yaw) {
+        this.position = new Vector3f(x, y, z);
+        this.pitch = pitch;
+        this.yaw = yaw;
         this.viewMatrix = new Matrix4f();
         this.projectionMatrix = new Matrix4f();
         
@@ -24,6 +24,10 @@ public class Camera {
             0.01f,                      // near clipping plane
             1000f                       // far clipping plane
         );
+    }
+    
+    public Camera() {
+        this(0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
     }
     
     public Matrix4f getProjectionMatrix() { return projectionMatrix; }
