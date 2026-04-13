@@ -161,6 +161,10 @@ public class VoxelEngine {
     private void loop() {
         // Set the clear color
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        
+        // FPS counter variables
+        int frameCount = 0;
+        double fpsTimer = glfwGetTime();
 
         // Run the rendering loop until the user has attempted to close
         // the window
@@ -199,6 +203,14 @@ public class VoxelEngine {
 
             // Poll for window events
             glfwPollEvents();
+            
+            // Update and render FPS to window title
+            frameCount++;
+            if (glfwGetTime() - fpsTimer >= 1.0) {
+                glfwSetWindowTitle(window, "Voxel Engine — FPS: " + frameCount);
+                frameCount = 0;
+                fpsTimer = glfwGetTime();
+            }
         }
     }
 
