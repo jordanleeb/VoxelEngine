@@ -159,7 +159,6 @@ public class VoxelEngine {
                 }
             }
         }
-        this.mesh = ChunkMesher.buildMesh(tree);
         
         // Build test mesh from octree
         this.mesh = ChunkMesher.buildMesh(tree);
