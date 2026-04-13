@@ -80,11 +80,21 @@ public class ChunkMesher {
         }
 
         // Add 6 indices (two triangles)
-        indices.add(base);
-        indices.add(base + 1);
-        indices.add(base + 2);
-        indices.add(base + 2);
-        indices.add(base + 3);
-        indices.add(base);
+        boolean flip = (axis == 1) != positive;
+        if (flip) {
+            indices.add(base);
+            indices.add(base + 3);
+            indices.add(base + 2);
+            indices.add(base + 2);
+            indices.add(base + 1);
+            indices.add(base);
+        } else {
+            indices.add(base);
+            indices.add(base + 1);
+            indices.add(base + 2);
+            indices.add(base + 2);
+            indices.add(base + 3);
+            indices.add(base);
+        }
     }
 }
