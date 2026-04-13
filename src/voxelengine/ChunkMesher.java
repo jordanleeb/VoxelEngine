@@ -5,6 +5,9 @@ import java.util.List;
 
 public class ChunkMesher {
     public static Mesh buildMesh(Octree tree) {
+        int naiveQuads = 0;
+        int dissectedQuads = 0;
+        
         FloatBuffer vertices = new FloatBuffer(1024);
         IntBuffer indices = new IntBuffer(1024);
         
@@ -13,6 +16,20 @@ public class ChunkMesher {
         for (int axis = 0; axis < 3; axis++) {
             for (int layer = 0; layer < tree.size; layer++) {
                 boolean[][][] slices = SliceExtractor.extract(tree, axis, layer);
+                
+                // Count naive quads (one per visible face)
+                for (int r = 0; r < slices[0].length; r++) {
+                    for (int c = 0; c < slices[0][r].length; c++) {
+                        if (slices[0][r][c]) {
+                            naiveQuads++;
+                        }
+                    }
+                }
+
+                for (int r = 0; r < slices[1].length; r++)
+                    for (int c = 0; c < slices[1][r].length; c++)
+                        if (slices[1][r][c])
+                            naiveQuads++;
 
                 // Positive face
                 List<Rect> posRects = dissector.solve(slices[0]);
@@ -25,8 +42,16 @@ public class ChunkMesher {
                 for (Rect r : negRects) {
                     addQuad(vertices, indices, r, axis, layer, false);
                 }
+                
+                // Count dissected quads
+                dissectedQuads += posRects.size() + negRects.size();
             }
         }
+        
+        System.out.println("Naive quads: " + naiveQuads);
+        System.out.println("Dissected quads: " + dissectedQuads);
+        System.out.println("Saved: " + (naiveQuads - dissectedQuads) + " ("
+                + String.format("%.1f", (1.0 - (double) dissectedQuads / naiveQuads) * 100) + "%)");
 
         return new Mesh(vertices.trimmed(), indices.trimmed());
     }
