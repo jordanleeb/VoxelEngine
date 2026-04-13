@@ -69,6 +69,7 @@ public class VoxelEngine {
     private boolean firstMouse = true;
     
     private boolean showQuadEdges = false;
+    private boolean mouseCaptured = true;
 
     public void run() {
         init();
@@ -119,6 +120,12 @@ public class VoxelEngine {
             if (key == GLFW_KEY_F && action == GLFW_RELEASE) {
                 showQuadEdges = !showQuadEdges;
             }
+            if (key == GLFW_KEY_TAB && action == GLFW_RELEASE) {
+                mouseCaptured = !mouseCaptured;
+                glfwSetInputMode(window, GLFW_CURSOR,
+                        mouseCaptured ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+                firstMouse = true;
+            }
         });
 
         // Make the OpenGL context current
@@ -149,6 +156,7 @@ public class VoxelEngine {
         
         // Set cursor callback for camera rotation
         glfwSetCursorPosCallback(window, (win, xpos, ypos) -> {
+            if (!mouseCaptured) return;
             if (firstMouse) {
                 lastMouseX = xpos;
                 lastMouseY = ypos;
@@ -193,17 +201,19 @@ public class VoxelEngine {
             lastFrameTime = currentTime;
             
             // Camera input
-            float speed = 5.0f * deltaTime;
-            float forward = 0.0f, right = 0.0f, up = 0.0f;
-            
-            if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) forward += speed;
-            if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) forward -= speed;
-            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) right -= speed;
-            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) right += speed;
-            if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) up += speed;
-            if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) up -= speed;
-            
-            camera.move(forward, right, up);
+            if (mouseCaptured) {
+                float speed = 5.0f * deltaTime;
+                float forward = 0.0f, right = 0.0f, up = 0.0f;
+
+                if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) { forward += speed; }
+                if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) { forward -= speed; }
+                if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) { right -= speed; }
+                if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) { right += speed; }
+                if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) { up += speed; }
+                if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) { up -= speed; }
+
+                camera.move(forward, right, up);
+            }
             
             // Clear the framebuffer
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
