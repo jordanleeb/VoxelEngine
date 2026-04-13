@@ -116,11 +116,11 @@ public class VoxelEngine {
         this.camera = new Camera();
 
         // Create test octree
-        Octree tree = new Octree(16);
+        Octree tree = new Octree(256);
         java.util.Random rand = new java.util.Random();
-        for (int x = 0; x < 16; x++)
-            for (int y = 0; y < 16; y++)
-                for (int z = 0; z < 16; z++)
+        for (int x = 0; x < 256; x++)
+            for (int y = 0; y < 256; y++)
+                for (int z = 0; z < 256; z++)
                     if (rand.nextFloat() < 0.3f)
                         tree.set(x, y, z, true);
         

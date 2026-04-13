@@ -9,7 +9,7 @@ import java.util.List;
 public class Dissector {
     private HashMap<Long, Rect> tl, tr, bl, br, tc, bc;
     private HashMap<Integer, HashSet<Integer>> byTop, byBot;
-    private HashMap<Integer, Rect> active;
+    private Rect[] active;
     private ArrayDeque<Integer> queue;
     private int nextId;
     
@@ -22,7 +22,7 @@ public class Dissector {
         bc = new HashMap<>();
         byTop = new HashMap<>();
         byBot = new HashMap<>();
-        active = new HashMap<>();
+        active = new Rect[256];
         queue = new ArrayDeque<>();
         nextId = 0;
     }
@@ -38,7 +38,12 @@ public class Dissector {
     private void addRect(int t, int l, int b, int r) {
         Rect rect = new Rect(t, l, b, r);
         rect.id = nextId++;
-        active.put(rect.id, rect);
+        if (rect.id >= active.length) {
+            Rect[] newActive = new Rect[active.length * 2];
+            System.arraycopy(active, 0, newActive, 0, active.length);
+            active = newActive;
+        }
+        active[rect.id] = rect;
 
         tl.put(key2(t, l), rect);
         tr.put(key2(t, r), rect);
@@ -54,7 +59,7 @@ public class Dissector {
     }
     
     private void removeRect(Rect rect) {
-        active.remove(rect.id);
+        active[rect.id] = null;
 
         tl.remove(key2(rect.top, rect.left));
         tr.remove(key2(rect.top, rect.right));
@@ -104,19 +109,19 @@ public class Dissector {
     private boolean tryHopper(Rect a) {
         Rect b;
         b = tl.get(key2(a.bottom + 1, a.left));
-        if (b != null && active.containsKey(b.id) && doHopper(a, b)) {
+        if (b != null && b.id < active.length && active[b.id] != null && doHopper(a, b)) {
             return true;
         }
         b = tr.get(key2(a.bottom + 1, a.right));
-        if (b != null && active.containsKey(b.id) && doHopper(a, b)) {
+        if (b != null && b.id < active.length && active[b.id] != null && doHopper(a, b)) {
             return true;
         }
         b = bl.get(key2(a.top - 1, a.left));
-        if (b != null && active.containsKey(b.id) && doHopper(b, a)) {
+        if (b != null && b.id < active.length && active[b.id] != null && doHopper(b, a)) {
             return true;
         }
         b = br.get(key2(a.top - 1, a.right));
-        if (b != null && active.containsKey(b.id) && doHopper(b, a)) {
+        if (b != null && b.id < active.length && active[b.id] != null && doHopper(b, a)) {
             return true;
         }
         return false;
@@ -141,10 +146,10 @@ public class Dissector {
         HashSet<Integer> topSet = byBot.get(r.top - 1);
         if (topSet != null) {
             for (int raId : new ArrayList<>(topSet)) {
-                Rect ra = active.get(raId);
+                Rect ra = raId < active.length ? active[raId] : null;
                 if (ra != null && r.left <= ra.left && ra.right <= r.right) {
                     Rect rb = tc.get(key3(r.bottom + 1, ra.left, ra.right));
-                    if (rb != null && active.containsKey(rb.id)) {
+                    if (rb != null && rb.id < active.length && active[rb.id] != null) {
                         return doInvHopper(ra, r, rb);
                     }
                 }
@@ -155,10 +160,10 @@ public class Dissector {
         HashSet<Integer> midTopSet = byTop.get(r.bottom + 1);
         if (midTopSet != null) {
             for (int rmId : new ArrayList<>(midTopSet)) {
-                Rect rm = active.get(rmId);
+                Rect rm = rmId < active.length ? active[rmId] : null;
                 if (rm != null && rm.left <= r.left && r.right <= rm.right) {
                     Rect rb = tc.get(key3(rm.bottom + 1, r.left, r.right));
-                    if (rb != null && active.containsKey(rb.id)) {
+                    if (rb != null && rb.id < active.length && active[rb.id] != null) {
                         return doInvHopper(r, rm, rb);
                     }
                 }
@@ -169,10 +174,10 @@ public class Dissector {
         HashSet<Integer> midBotSet = byBot.get(r.top - 1);
         if (midBotSet != null) {
             for (int rmId : new ArrayList<>(midBotSet)) {
-                Rect rm = active.get(rmId);
+                Rect rm = rmId < active.length ? active[rmId] : null;
                 if (rm != null && rm.left <= r.left && r.right <= rm.right) {
                     Rect ra = bc.get(key3(rm.top - 1, r.left, r.right));
-                    if (ra != null && active.containsKey(ra.id)) {
+                    if (ra != null && ra.id < active.length && active[ra.id] != null) {
                         return doInvHopper(ra, rm, r);
                     }
                 }
@@ -200,21 +205,33 @@ public class Dissector {
         }
     }
     
-    public static List<Rect> solve(boolean[][] matrix) {
-        Dissector d = new Dissector();
-        d.seed(matrix);
-
-        while (!d.queue.isEmpty()) {
-            int rid = d.queue.poll();
-            Rect rect = d.active.get(rid);
-            if (rect == null) {
-                continue;
-            }
-            if (!d.tryHopper(rect)) {
-                d.tryInvHopper(rect);
-            }
+    public List<Rect> solve(boolean[][] matrix) {
+        reset();
+        seed(matrix);
+        while (!queue.isEmpty()) {
+            int rid = queue.poll();
+            Rect rect = rid < active.length ? active[rid] : null;
+            if (rect == null) continue;
+            if (!tryHopper(rect)) tryInvHopper(rect);
         }
-
-        return new ArrayList<>(d.active.values());
+        ArrayList<Rect> result = new ArrayList<>();
+        for (int i = 0; i < nextId; i++) {
+            if (active[i] != null) result.add(active[i]);
+        }
+        return result;
+    }
+    
+    public void reset() {
+        tl.clear();
+        tr.clear();
+        bl.clear();
+        br.clear();
+        tc.clear();
+        bc.clear();
+        byTop.clear();
+        byBot.clear();
+        active = new Rect[256];
+        queue.clear();
+        nextId = 0;
     }
 }

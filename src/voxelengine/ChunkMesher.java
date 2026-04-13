@@ -5,42 +5,33 @@ import java.util.List;
 
 public class ChunkMesher {
     public static Mesh buildMesh(Octree tree) {
-        ArrayList<Float> vertices = new ArrayList<>();
-        ArrayList<Integer> indices = new ArrayList<>();
+        FloatBuffer vertices = new FloatBuffer(1024);
+        IntBuffer indices = new IntBuffer(1024);
+        
+        Dissector dissector = new Dissector();
 
         for (int axis = 0; axis < 3; axis++) {
             for (int layer = 0; layer < tree.size; layer++) {
                 boolean[][][] slices = SliceExtractor.extract(tree, axis, layer);
 
                 // Positive face
-                List<Rect> posRects = Dissector.solve(slices[0]);
+                List<Rect> posRects = dissector.solve(slices[0]);
                 for (Rect r : posRects) {
                     addQuad(vertices, indices, r, axis, layer, true);
                 }
 
                 // Negative face
-                List<Rect> negRects = Dissector.solve(slices[1]);
+                List<Rect> negRects = dissector.solve(slices[1]);
                 for (Rect r : negRects) {
                     addQuad(vertices, indices, r, axis, layer, false);
                 }
             }
         }
 
-        // Convert ArrayLists to arrays
-        float[] vertArray = new float[vertices.size()];
-        for (int i = 0; i < vertices.size(); i++) {
-            vertArray[i] = vertices.get(i);
-        }
-
-        int[] idxArray = new int[indices.size()];
-        for (int i = 0; i < indices.size(); i++) {
-            idxArray[i] = indices.get(i);
-        }
-
-        return new Mesh(vertArray, idxArray);
+        return new Mesh(vertices.trimmed(), indices.trimmed());
     }
     
-    private static void addQuad(ArrayList<Float> vertices, ArrayList<Integer> indices,
+    private static void addQuad(FloatBuffer vertices, IntBuffer indices,
                                 Rect r, int axis, int layer, boolean positive) {
         float pos = positive ? layer + 1 : layer;
 
@@ -75,7 +66,7 @@ public class ChunkMesher {
         float cr = 0.3f, cg = 0.8f, cb = 0.3f;
 
         // Base index for this quad
-        int base = vertices.size() / 7;
+        int base = vertices.size / 7;
 
         // Add 4 vertices
         for (int i = 0; i < 4; i++) {
