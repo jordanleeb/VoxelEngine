@@ -31,8 +31,21 @@ public class VoxelEngine {
     in vec3 vColor;                        // receives color from vertex shader
     in vec3 vPos;                          // world position for grid lines
     flat in float vAxis;                   // which axis this face is on
+    uniform bool showQuadEdges;
     out vec4 FragColor;                    // the final pixel color
     void main() {
+        if (showQuadEdges) {
+            float near = 0.01;
+            float far = 1000.0;
+            float z = gl_FragCoord.z;
+            float linearDepth = (2.0 * near) / (far + near - z * (far - near));
+            float fade = clamp(1.0 - linearDepth * 55.0, 0.0, 1.0);
+            vec3 nearColor = vec3(0.2, 1.0, 0.3);
+            vec3 farColor = vec3(0.02, 0.05, 0.02);
+            vec3 color = mix(farColor, nearColor, fade);
+            FragColor = vec4(color, 1.0);
+            return;
+        }
         vec3 f = fract(vPos);
         float edge = 0.05;
         bool grid = false;
@@ -54,6 +67,8 @@ public class VoxelEngine {
     private double lastFrameTime;
     private double lastMouseX, lastMouseY;
     private boolean firstMouse = true;
+    
+    private boolean showQuadEdges = false;
 
     public void run() {
         init();
@@ -100,6 +115,9 @@ public class VoxelEngine {
         glfwSetKeyCallback(window, (win, key, scancode, action, mods) -> {
             if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE) {
                 glfwSetWindowShouldClose(win, true);
+            }
+            if (key == GLFW_KEY_F && action == GLFW_RELEASE) {
+                showQuadEdges = !showQuadEdges;
             }
         });
 
@@ -190,11 +208,19 @@ public class VoxelEngine {
             // Clear the framebuffer
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+            // Set wireframe on / off
+            if (showQuadEdges) {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            } else {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            }
+            
             // Draw
             shader.use();
             
             shader.setUniform("view", camera.getViewMatrix());
             shader.setUniform("projection", camera.getProjectionMatrix());
+            shader.setUniform("showQuadEdges", showQuadEdges);
             
             mesh.draw();
 
