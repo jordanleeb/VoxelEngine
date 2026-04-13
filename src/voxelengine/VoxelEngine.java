@@ -143,13 +143,23 @@ public class VoxelEngine {
         this.camera = new Camera();
 
         // Create test octree
-        Octree tree = new Octree(16);
-        java.util.Random rand = new java.util.Random();
-        for (int x = 0; x < 16; x++)
-            for (int y = 0; y < 16; y++)
-                for (int z = 0; z < 16; z++)
-                    if (rand.nextFloat() < 0.3f)
-                        tree.set(x, y, z, true);
+        Octree tree = new Octree(64);
+        for (int x = 0; x < 64; x++) {
+            for (int z = 0; z < 64; z++) {
+                double nx = x * 0.05;
+                double nz = z * 0.05;
+                double height = 0;
+                height += PerlinNoise.noise(nx, 0, nz) * 20;
+                height += PerlinNoise.noise(nx * 2, 0, nz * 2) * 10;
+                height += PerlinNoise.noise(nx * 4, 0, nz * 4) * 5;
+                height += 32;
+
+                for (int y = 0; y < (int) height && y < 64; y++) {
+                    tree.set(x, y, z, true);
+                }
+            }
+        }
+        this.mesh = ChunkMesher.buildMesh(tree);
         
         // Build test mesh from octree
         this.mesh = ChunkMesher.buildMesh(tree);
