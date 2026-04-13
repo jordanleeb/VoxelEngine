@@ -108,6 +108,8 @@ public class VoxelEngine {
 
         GL.createCapabilities();
         glEnable(GL_DEPTH_TEST);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
 
         // Initialize shader
         this.shader = new Shader(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
