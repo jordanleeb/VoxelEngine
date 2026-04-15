@@ -233,6 +233,7 @@ public class SliceExtractor {
                     } else {
                         nwz--;
                     }
+                    if (axis == 1 && nwy < 0) continue;
                     if (world.getBlock(nwx, nwy, nwz) == 0) {
                         negSlice[row][col] = true;
                     }

@@ -37,6 +37,12 @@ public class VoxelEngine {
     uniform bool showQuadEdges;            // wireframe toggle
     out vec4 FragColor;                    // the final pixel color
     void main() {
+        // Water surface
+        if (vAxis > 4.0) {
+            FragColor = vec4(0.15, 0.4, 0.75, 0.6);
+            return;
+        }
+                                                         
         // Wireframe mode
         if (showQuadEdges) {
             float near = 0.01;
@@ -69,11 +75,21 @@ public class VoxelEngine {
         if (vAxis != 1.0 && (f.y < edge || f.y > 1.0 - edge)) grid = true;
         if (vAxis != 2.0 && (f.z < edge || f.z > 1.0 - edge)) grid = true;
 
+        // Water overlay
+        float waterLevel = 28.0;
+        bool underwater = y < waterLevel; 
+                                                         
         // Final color
         if (grid) {
             FragColor = vec4(blockColor * 0.3, 1.0);
         } else {
             FragColor = vec4(blockColor, 1.0);
+        }
+        
+        // Tint underwater faces blue
+        if (underwater) {
+            float depth = clamp((waterLevel - y) / 10.0, 0.2, 0.85);
+            FragColor.rgb = mix(FragColor.rgb, vec3(0.05, 0.15, 0.5), depth);
         }
     }""";
 
@@ -91,17 +107,20 @@ public class VoxelEngine {
     private World world;
     
     private Frustum frustum = new Frustum();
+    
+    private Mesh waterMesh;
 
     public void run() {
         init();
         loop();
 
-        // Cleanup mesh and shader
+        // Cleanup meshes and shader
         for (Chunk chunk : world.getVisibleChunks()) {
             if (chunk.mesh != null) {
                 chunk.mesh.cleanup();
             }
         }
+        waterMesh.cleanup();
         shader.cleanup();
 
         // Free the window callbacks and destroy the window
@@ -144,6 +163,10 @@ public class VoxelEngine {
             }
             if (key == GLFW_KEY_F && action == GLFW_RELEASE) {
                 showQuadEdges = !showQuadEdges;
+                
+                // Update sky color
+                if (showQuadEdges) { glClearColor(0.0f, 0.0f, 0.0f, 0.0f); }
+                else { glClearColor(0.53f, 0.81f, 0.92f, 1.0f); }
             }
             if (key == GLFW_KEY_TAB && action == GLFW_RELEASE) {
                 mouseCaptured = !mouseCaptured;
@@ -164,6 +187,8 @@ public class VoxelEngine {
 
         GL.createCapabilities();
         glEnable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
 
@@ -175,6 +200,19 @@ public class VoxelEngine {
 
         // Initialize world
         this.world = new World(8);
+        
+        // Initialize water mesh
+        float waterLevel = 28.25f;
+        float waterSize = (4 + 1) * Chunk.SIZE_X; // render distance + 1 chunk padding
+        float[] waterVerts = {
+            -waterSize, waterLevel, -waterSize, 0, 0, 0, 5.0f,
+            waterSize, waterLevel, -waterSize, 0, 0, 0, 5.0f,
+            waterSize, waterLevel, waterSize, 0, 0, 0, 5.0f,
+            -waterSize, waterLevel, waterSize, 0, 0, 0, 5.0f,};
+        int[] waterIdx = {
+            0, 1, 2, 2, 3, 0,
+            0, 3, 2, 2, 1, 0,};
+        waterMesh = new Mesh(waterVerts, waterIdx);
         
         // Set cursor callback for camera rotation
         glfwSetCursorPosCallback(window, (win, xpos, ypos) -> {
@@ -208,7 +246,7 @@ public class VoxelEngine {
 
     private void loop() {
         // Set the clear color
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClearColor(0.53f, 0.81f, 0.92f, 1.0f);
         
         // FPS counter variables
         int frameCount = 0;
@@ -286,6 +324,13 @@ public class VoxelEngine {
                     }
                 }
             }
+            
+            // Draw water
+            glDepthMask(false);
+            Matrix4f waterModel = new Matrix4f().translate(camera.getPosition().x, 0, camera.getPosition().z);
+            shader.setUniform("model", waterModel);
+            waterMesh.draw();
+            glDepthMask(true);
 
             // Swap the color buffers
             glfwSwapBuffers(window);

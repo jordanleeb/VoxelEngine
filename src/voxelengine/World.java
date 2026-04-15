@@ -35,6 +35,21 @@ public class World {
                 }
             }
         }
+        
+        // Mark neighbors dirty so they remesh with new boundary data
+        ChunkPos[] neighbors = {
+            new ChunkPos(pos.x - 1, pos.z),
+            new ChunkPos(pos.x + 1, pos.z),
+            new ChunkPos(pos.x, pos.z - 1),
+            new ChunkPos(pos.x, pos.z + 1),
+        };
+        
+        for (ChunkPos n : neighbors) {
+            Chunk neighbor = chunks.get(n);
+            if (neighbor != null) {
+                neighbor.dirty = true;
+            }
+        }
 
         chunks.put(pos, chunk);
     }
@@ -44,28 +59,38 @@ public class World {
     }
     
     public void update(float camX, float camZ) {
-        // Which chunk is the camera in?
         int camChunkX = (int) Math.floor(camX / Chunk.SIZE_X);
         int camChunkZ = (int) Math.floor(camZ / Chunk.SIZE_Z);
 
-        // Pass 1: Generate all chunks in range
+        int chunksProcessed = 0;
+        int maxPerFrame = 2;
+
+        // Pass 1: Generate chunks in range
         for (int dx = -renderDistance; dx <= renderDistance; dx++) {
             for (int dz = -renderDistance; dz <= renderDistance; dz++) {
                 ChunkPos pos = new ChunkPos(camChunkX + dx, camChunkZ + dz);
                 if (!chunks.containsKey(pos)) {
+                    if (chunksProcessed >= maxPerFrame) {
+                        continue;
+                    }
                     generateChunk(pos);
+                    chunksProcessed++;
                 }
             }
         }
 
-        // Pass 2: Mesh chunks that have all neighbors
+        // Pass 2: Mesh dirty chunks
         for (int dx = -renderDistance; dx <= renderDistance; dx++) {
             for (int dz = -renderDistance; dz <= renderDistance; dz++) {
                 ChunkPos pos = new ChunkPos(camChunkX + dx, camChunkZ + dz);
                 Chunk chunk = chunks.get(pos);
-                if (chunk.dirty) {
+                if (chunk != null && chunk.dirty) {
+                    if (chunksProcessed >= maxPerFrame) {
+                        continue;
+                    }
                     chunk.mesh = ChunkMesher.buildMesh(chunk.data, World.this, chunk.pos);
                     chunk.dirty = false;
+                    chunksProcessed++;
                 }
             }
         }
@@ -73,8 +98,8 @@ public class World {
         // Unload chunks too far away
         ArrayList<ChunkPos> toRemove = new ArrayList<>();
         for (ChunkPos pos : chunks.keySet()) {
-            if (Math.abs(pos.x - camChunkX) > renderDistance + 2 ||
-                Math.abs(pos.z - camChunkZ) > renderDistance + 2) {
+            if (Math.abs(pos.x - camChunkX) > renderDistance + 2
+                    || Math.abs(pos.z - camChunkZ) > renderDistance + 2) {
                 toRemove.add(pos);
             }
         }
