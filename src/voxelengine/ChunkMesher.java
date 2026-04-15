@@ -47,11 +47,6 @@ public class ChunkMesher {
                 dissectedQuads += posRects.size() + negRects.size();
             }
         }
-        
-        System.out.println("Naive quads: " + naiveQuads);
-        System.out.println("Dissected quads: " + dissectedQuads);
-        System.out.println("Saved: " + (naiveQuads - dissectedQuads) + " ("
-                + String.format("%.1f", (1.0 - (double) dissectedQuads / naiveQuads) * 100) + "%)");
 
         return new Mesh(vertices.trimmed(), indices.trimmed());
     }
@@ -126,45 +121,30 @@ public class ChunkMesher {
                                 Rect r, int axis, int layer, boolean positive) {
         float pos = positive ? layer + 1 : layer;
 
-        // The 4 corners as float arrays [x, y, z]
-        float[][] corners = new float[4][3];
-
         float minRow = r.top;
         float maxRow = r.bottom + 1;
         float minCol = r.left;
         float maxCol = r.right + 1;
 
-        for (int i = 0; i < 4; i++) {
-            float rowVal = (i < 2) ? minRow : maxRow;
-            float colVal = (i == 0 || i == 3) ? minCol : maxCol;
-
-            if (axis == 0) {
-                corners[i][0] = pos;
-                corners[i][1] = rowVal;
-                corners[i][2] = colVal;
-            } else if (axis == 1) {
-                corners[i][0] = rowVal;
-                corners[i][1] = pos;
-                corners[i][2] = colVal;
-            } else {
-                corners[i][0] = rowVal;
-                corners[i][1] = colVal;
-                corners[i][2] = pos;
-            }
-        }
-
-        // Base index for this quad
         int base = vertices.size / 4;
 
-        // Add 4 vertices
-        for (int i = 0; i < 4; i++) {
-            vertices.add(corners[i][0]);
-            vertices.add(corners[i][1]);
-            vertices.add(corners[i][2]);
-            vertices.add((float) axis);
+        if (axis == 0) {
+            addVertex(vertices, pos, minRow, minCol, axis);
+            addVertex(vertices, pos, minRow, maxCol, axis);
+            addVertex(vertices, pos, maxRow, maxCol, axis);
+            addVertex(vertices, pos, maxRow, minCol, axis);
+        } else if (axis == 1) {
+            addVertex(vertices, minRow, pos, minCol, axis);
+            addVertex(vertices, minRow, pos, maxCol, axis);
+            addVertex(vertices, maxRow, pos, maxCol, axis);
+            addVertex(vertices, maxRow, pos, minCol, axis);
+        } else {
+            addVertex(vertices, minRow, minCol, pos, axis);
+            addVertex(vertices, minRow, maxCol, pos, axis);
+            addVertex(vertices, maxRow, maxCol, pos, axis);
+            addVertex(vertices, maxRow, minCol, pos, axis);
         }
 
-        // Add 6 indices (two triangles)
         boolean flip = (axis == 1) != positive;
         if (flip) {
             indices.add(base);
@@ -181,5 +161,12 @@ public class ChunkMesher {
             indices.add(base + 3);
             indices.add(base);
         }
+    }
+
+    private static void addVertex(FloatBuffer vertices, float x, float y, float z, int axis) {
+        vertices.add(x);
+        vertices.add(y);
+        vertices.add(z);
+        vertices.add((float) axis);
     }
 }
