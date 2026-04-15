@@ -15,23 +15,19 @@ public class VoxelEngine {
     private static final String VERTEX_SHADER_SOURCE = """
     #version 330 core
     layout (location = 0) in vec3 aPos;    // vertex position
-    layout (location = 1) in vec3 aColor;  // vertex color
-    layout (location = 2) in float aAxis;  // face axis for grid lines
+    layout (location = 1) in float aAxis;  // face axis for grid lines
     uniform mat4 view;                     // camera view matrix
     uniform mat4 projection;               // perspective projection matrix
     uniform mat4 model;                    // chunk world position offset
-    out vec3 vColor;                       // passed to fragment shader
     out vec3 vPos;                         // world position for grid lines
     flat out float vAxis;                  // which axis this face is on
     void main() {
-        vColor = aColor;
         vPos = (model * vec4(aPos, 1.0)).xyz;
         vAxis = aAxis;
         gl_Position = projection * view * model * vec4(aPos, 1.0);
     }""";
     private static final String FRAGMENT_SHADER_SOURCE = """
     #version 330 core
-    in vec3 vColor;                        // receives color from vertex shader
     in vec3 vPos;                          // world position for grid lines
     flat in float vAxis;                   // which axis this face is on
     uniform bool showQuadEdges;            // wireframe toggle
@@ -205,13 +201,16 @@ public class VoxelEngine {
         float waterLevel = 28.25f;
         float waterSize = (4 + 1) * Chunk.SIZE_X; // render distance + 1 chunk padding
         float[] waterVerts = {
-            -waterSize, waterLevel, -waterSize, 0, 0, 0, 5.0f,
-            waterSize, waterLevel, -waterSize, 0, 0, 0, 5.0f,
-            waterSize, waterLevel, waterSize, 0, 0, 0, 5.0f,
-            -waterSize, waterLevel, waterSize, 0, 0, 0, 5.0f,};
+            -waterSize, waterLevel, -waterSize, 5.0f,
+            waterSize, waterLevel, -waterSize, 5.0f,
+            waterSize, waterLevel, waterSize, 5.0f,
+            -waterSize, waterLevel, waterSize, 5.0f,
+        };
         int[] waterIdx = {
             0, 1, 2, 2, 3, 0,
-            0, 3, 2, 2, 1, 0,};
+            0, 3, 2, 2, 1, 0,
+        };
+        
         waterMesh = new Mesh(waterVerts, waterIdx);
         
         // Set cursor callback for camera rotation

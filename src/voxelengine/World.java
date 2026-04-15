@@ -88,6 +88,9 @@ public class World {
                     if (chunksProcessed >= maxPerFrame) {
                         continue;
                     }
+                    if (chunk.mesh != null) {
+                        chunk.mesh.cleanup();
+                    }
                     chunk.mesh = ChunkMesher.buildMesh(chunk.data, World.this, chunk.pos);
                     chunk.dirty = false;
                     chunksProcessed++;
@@ -103,6 +106,7 @@ public class World {
                 toRemove.add(pos);
             }
         }
+        
         for (ChunkPos pos : toRemove) {
             Chunk chunk = chunks.get(pos);
             if (chunk.mesh != null) {

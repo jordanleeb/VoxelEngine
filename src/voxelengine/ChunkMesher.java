@@ -153,20 +153,14 @@ public class ChunkMesher {
             }
         }
 
-        // Color — flat green for now
-        float cr = 0.3f, cg = 0.8f, cb = 0.3f;
-
         // Base index for this quad
-        int base = vertices.size / 7;
+        int base = vertices.size / 4;
 
         // Add 4 vertices
         for (int i = 0; i < 4; i++) {
             vertices.add(corners[i][0]);
             vertices.add(corners[i][1]);
             vertices.add(corners[i][2]);
-            vertices.add(cr);
-            vertices.add(cg);
-            vertices.add(cb);
             vertices.add((float) axis);
         }
 
