@@ -20,7 +20,6 @@ public class Camera {
         projectionMatrix.perspective(
             (float) Math.toRadians(70), // field of view
             800f / 600f,                // aspect ratio
-                                        // TODO: update on window resize
             0.01f,                      // near clipping plane
             1000f                       // far clipping plane
         );
@@ -77,5 +76,14 @@ public class Camera {
     
     public Matrix4f getViewProjectionMatrix() {
         return new Matrix4f(getProjectionMatrix()).mul(getViewMatrix());
+    }
+    
+    public void updateAspectRation(float aspectRatio) {
+        projectionMatrix.identity().perspective(
+            (float) Math.toRadians(70),
+            aspectRatio,
+            0.01f,
+            1000f
+        );
     }
 }

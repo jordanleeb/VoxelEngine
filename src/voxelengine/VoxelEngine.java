@@ -152,6 +152,12 @@ public class VoxelEngine {
                 firstMouse = true;
             }
         });
+        
+        // Set window resize callback
+        glfwSetFramebufferSizeCallback(window, (Win, width, height) -> {
+           glViewport(0, 0, width, height);
+           camera.updateAspectRation((float) width / height);
+        });
 
         // Make the OpenGL context current
         glfwMakeContextCurrent(window);
