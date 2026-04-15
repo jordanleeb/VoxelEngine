@@ -163,6 +163,13 @@ public class VoxelEngine {
                 // Update sky color
                 if (showQuadEdges) { glClearColor(0.0f, 0.0f, 0.0f, 0.0f); }
                 else { glClearColor(0.53f, 0.81f, 0.92f, 1.0f); }
+                
+                // Set wireframe on / off
+                if (showQuadEdges) {
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                } else {
+                    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                }
             }
             if (key == GLFW_KEY_TAB && action == GLFW_RELEASE) {
                 mouseCaptured = !mouseCaptured;
@@ -180,6 +187,9 @@ public class VoxelEngine {
 
         // Make the OpenGL context current
         glfwMakeContextCurrent(window);
+        
+        // Disable V-SYNC
+        GLFW.glfwSwapInterval(0);
 
         GL.createCapabilities();
         glEnable(GL_DEPTH_TEST);
@@ -276,13 +286,6 @@ public class VoxelEngine {
             
             // Clear the framebuffer
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            // Set wireframe on / off
-            if (showQuadEdges) {
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            } else {
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-            }
             
             // Update world based on camera position
             world.update(camera.getPosition().x, camera.getPosition().z);
@@ -297,17 +300,6 @@ public class VoxelEngine {
             shader.setUniform("showQuadEdges", showQuadEdges);
 
             Matrix4f model = new Matrix4f();
-            for (Chunk chunk : world.getVisibleChunks()) {
-                if (chunk.mesh != null) {
-                    model.identity().translate(
-                            chunk.pos.x * Chunk.SIZE_X,
-                            0,
-                            chunk.pos.z * Chunk.SIZE_Z
-                    );
-                    shader.setUniform("model", model);
-                    chunk.mesh.draw();
-                }
-            }
 
             int chunksDrawn = 0;
             for (Chunk chunk : world.getVisibleChunks()) {
