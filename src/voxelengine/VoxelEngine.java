@@ -52,7 +52,7 @@ public class VoxelEngine {
         }
 
         // Height-based block color (per voxel, not per quad)
-        float y = floor(vPos.y + 0.001);
+        float y = floor(vPos.y - 0.001);
         vec3 blockColor;
         if (y < 10.0)      blockColor = vec3(0.4, 0.35, 0.3);    // deep stone
         else if (y < 25.0) blockColor = vec3(0.5, 0.5, 0.5);     // stone
