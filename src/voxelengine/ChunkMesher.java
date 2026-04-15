@@ -56,6 +56,72 @@ public class ChunkMesher {
         return new Mesh(vertices.trimmed(), indices.trimmed());
     }
     
+    public static Mesh buildMesh(ChunkData data) {
+        FloatBuffer vertices = new FloatBuffer(1024);
+        IntBuffer indices = new IntBuffer(1024);
+        Dissector dissector = new Dissector();
+
+        for (int axis = 0; axis < 3; axis++) {
+            int layers;
+            if (axis == 0) {
+                layers = data.sizeX;
+            } else if (axis == 1) {
+                layers = data.sizeY;
+            } else {
+                layers = data.sizeZ;
+            }
+
+            for (int layer = 0; layer < layers; layer++) {
+                boolean[][][] slices = SliceExtractor.extract(data, axis, layer);
+
+                List<Rect> posRects = dissector.solve(slices[0]);
+                for (Rect r : posRects) {
+                    addQuad(vertices, indices, r, axis, layer, true);
+                }
+
+                List<Rect> negRects = dissector.solve(slices[1]);
+                for (Rect r : negRects) {
+                    addQuad(vertices, indices, r, axis, layer, false);
+                }
+            }
+        }
+
+        return new Mesh(vertices.trimmed(), indices.trimmed());
+    }
+    
+    public static Mesh buildMesh(ChunkData data, World world, ChunkPos pos) {
+        FloatBuffer vertices = new FloatBuffer(1024);
+        IntBuffer indices = new IntBuffer(1024);
+        Dissector dissector = new Dissector();
+
+        for (int axis = 0; axis < 3; axis++) {
+            int layers;
+            if (axis == 0) {
+                layers = data.sizeX;
+            } else if (axis == 1) {
+                layers = data.sizeY;
+            } else {
+                layers = data.sizeZ;
+            }
+
+            for (int layer = 0; layer < layers; layer++) {
+                boolean[][][] slices = SliceExtractor.extract(data, axis, layer, world, pos);
+
+                List<Rect> posRects = dissector.solve(slices[0]);
+                for (Rect r : posRects) {
+                    addQuad(vertices, indices, r, axis, layer, true);
+                }
+
+                List<Rect> negRects = dissector.solve(slices[1]);
+                for (Rect r : negRects) {
+                    addQuad(vertices, indices, r, axis, layer, false);
+                }
+            }
+        }
+
+        return new Mesh(vertices.trimmed(), indices.trimmed());
+    }
+    
     private static void addQuad(FloatBuffer vertices, IntBuffer indices,
                                 Rect r, int axis, int layer, boolean positive) {
         float pos = positive ? layer + 1 : layer;

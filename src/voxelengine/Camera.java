@@ -72,4 +72,10 @@ public class Camera {
         pitch += pitchDelta;
         pitch = Math.max(-89.0f, Math.min(89.0f, pitch));
     }
+    
+    public Vector3f getPosition() { return position; }
+    
+    public Matrix4f getViewProjectionMatrix() {
+        return new Matrix4f(getProjectionMatrix()).mul(getViewMatrix());
+    }
 }

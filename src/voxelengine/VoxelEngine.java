@@ -8,6 +8,8 @@ import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.system.MemoryUtil.*;
 
+import org.joml.Matrix4f;
+
 public class VoxelEngine {
 
     private static final String VERTEX_SHADER_SOURCE = """
@@ -17,52 +19,67 @@ public class VoxelEngine {
     layout (location = 2) in float aAxis;  // face axis for grid lines
     uniform mat4 view;                     // camera view matrix
     uniform mat4 projection;               // perspective projection matrix
+    uniform mat4 model;                    // chunk world position offset
     out vec3 vColor;                       // passed to fragment shader
     out vec3 vPos;                         // world position for grid lines
     flat out float vAxis;                  // which axis this face is on
     void main() {
         vColor = aColor;
-        vPos = aPos;
+        vPos = (model * vec4(aPos, 1.0)).xyz;
         vAxis = aAxis;
-        gl_Position = projection * view * vec4(aPos, 1.0);
+        gl_Position = projection * view * model * vec4(aPos, 1.0);
     }""";
     private static final String FRAGMENT_SHADER_SOURCE = """
     #version 330 core
     in vec3 vColor;                        // receives color from vertex shader
     in vec3 vPos;                          // world position for grid lines
     flat in float vAxis;                   // which axis this face is on
-    uniform bool showQuadEdges;
+    uniform bool showQuadEdges;            // wireframe toggle
     out vec4 FragColor;                    // the final pixel color
     void main() {
+        // Wireframe mode
         if (showQuadEdges) {
             float near = 0.01;
             float far = 1000.0;
             float z = gl_FragCoord.z;
             float linearDepth = (2.0 * near) / (far + near - z * (far - near));
-            float fade = clamp(1.0 - linearDepth * 55.0, 0.0, 1.0);
+            float fade = clamp(1.0 - linearDepth * 5.0, 0.0, 1.0);
             vec3 nearColor = vec3(0.2, 1.0, 0.3);
             vec3 farColor = vec3(0.02, 0.05, 0.02);
             vec3 color = mix(farColor, nearColor, fade);
             FragColor = vec4(color, 1.0);
             return;
         }
+
+        // Height-based block color (per voxel, not per quad)
+        float y = floor(vPos.y + 0.001);
+        vec3 blockColor;
+        if (y < 10.0)      blockColor = vec3(0.4, 0.35, 0.3);    // deep stone
+        else if (y < 25.0) blockColor = vec3(0.5, 0.5, 0.5);     // stone
+        else if (y < 30.0) blockColor = vec3(0.45, 0.3, 0.15);   // dirt
+        else if (y < 35.0) blockColor = vec3(0.2, 0.6, 0.15);    // grass
+        else if (y < 45.0) blockColor = vec3(0.55, 0.55, 0.55);  // mountain rock
+        else               blockColor = vec3(0.9, 0.9, 0.95);    // snow
+
+        // Voxel grid lines (skip the axis the face is aligned to)
         vec3 f = fract(vPos);
         float edge = 0.05;
         bool grid = false;
         if (vAxis != 0.0 && (f.x < edge || f.x > 1.0 - edge)) grid = true;
         if (vAxis != 1.0 && (f.y < edge || f.y > 1.0 - edge)) grid = true;
         if (vAxis != 2.0 && (f.z < edge || f.z > 1.0 - edge)) grid = true;
+
+        // Final color
         if (grid) {
-            FragColor = vec4(vColor * 0.3, 1.0);
+            FragColor = vec4(blockColor * 0.3, 1.0);
         } else {
-            FragColor = vec4(vColor, 1.0);
+            FragColor = vec4(blockColor, 1.0);
         }
     }""";
 
     private long window;   // The window handle
     private Camera camera;
     private Shader shader;
-    private Mesh mesh;
 
     private double lastFrameTime;
     private double lastMouseX, lastMouseY;
@@ -70,13 +87,21 @@ public class VoxelEngine {
     
     private boolean showQuadEdges = false;
     private boolean mouseCaptured = true;
+    
+    private World world;
+    
+    private Frustum frustum = new Frustum();
 
     public void run() {
         init();
         loop();
 
         // Cleanup mesh and shader
-        mesh.cleanup();
+        for (Chunk chunk : world.getVisibleChunks()) {
+            if (chunk.mesh != null) {
+                chunk.mesh.cleanup();
+            }
+        }
         shader.cleanup();
 
         // Free the window callbacks and destroy the window
@@ -140,28 +165,10 @@ public class VoxelEngine {
         this.shader = new Shader(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
         
         // Initialize camera
-        this.camera = new Camera(32.0f, 50.0f, 32.0f, -30.0f, -90.0f);
+        this.camera = new Camera(16.0f, 50.0f, 16.0f, -30.0f, -90.0f);
 
-        // Create test octree
-        Octree tree = new Octree(64);
-        for (int x = 0; x < 64; x++) {
-            for (int z = 0; z < 64; z++) {
-                double nx = x * 0.05;
-                double nz = z * 0.05;
-                double height = 0;
-                height += PerlinNoise.noise(nx, 0, nz) * 20;
-                height += PerlinNoise.noise(nx * 2, 0, nz * 2) * 10;
-                height += PerlinNoise.noise(nx * 4, 0, nz * 4) * 5;
-                height += 32;
-
-                for (int y = 0; y < (int) height && y < 64; y++) {
-                    tree.set(x, y, z, true);
-                }
-            }
-        }
-        
-        // Build test mesh from octree
-        this.mesh = ChunkMesher.buildMesh(tree);
+        // Initialize world
+        this.world = new World(8);
         
         // Set cursor callback for camera rotation
         glfwSetCursorPosCallback(window, (win, xpos, ypos) -> {
@@ -234,14 +241,45 @@ public class VoxelEngine {
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             }
             
-            // Draw
-            shader.use();
+            // Update world based on camera position
+            world.update(camera.getPosition().x, camera.getPosition().z);
+
+            // Update frustrum
+            frustum.update(camera.getViewProjectionMatrix());
             
+            // Draw all visible chunks
+            shader.use();
             shader.setUniform("view", camera.getViewMatrix());
             shader.setUniform("projection", camera.getProjectionMatrix());
             shader.setUniform("showQuadEdges", showQuadEdges);
-            
-            mesh.draw();
+
+            Matrix4f model = new Matrix4f();
+            for (Chunk chunk : world.getVisibleChunks()) {
+                if (chunk.mesh != null) {
+                    model.identity().translate(
+                            chunk.pos.x * Chunk.SIZE_X,
+                            0,
+                            chunk.pos.z * Chunk.SIZE_Z
+                    );
+                    shader.setUniform("model", model);
+                    chunk.mesh.draw();
+                }
+            }
+
+            int chunksDrawn = 0;
+            for (Chunk chunk : world.getVisibleChunks()) {
+                if (chunk.mesh != null) {
+                    float minX = chunk.pos.x * Chunk.SIZE_X;
+                    float minZ = chunk.pos.z * Chunk.SIZE_Z;
+                    if (frustum.isBoxVisible(minX, 0, minZ,
+                            minX + Chunk.SIZE_X, Chunk.SIZE_Y, minZ + Chunk.SIZE_Z)) {
+                        model.identity().translate(minX, 0, minZ);
+                        shader.setUniform("model", model);
+                        chunk.mesh.draw();
+                        chunksDrawn++;
+                    }
+                }
+            }
 
             // Swap the color buffers
             glfwSwapBuffers(window);
@@ -252,7 +290,8 @@ public class VoxelEngine {
             // Update and render FPS to window title
             frameCount++;
             if (glfwGetTime() - fpsTimer >= 1.0) {
-                glfwSetWindowTitle(window, "Voxel Engine — FPS: " + frameCount);
+                glfwSetWindowTitle(window, "Voxel Engine — FPS: " + frameCount
+                    + " | Chunks: " + chunksDrawn + "/" + world.chunks.size());
                 frameCount = 0;
                 fpsTimer = glfwGetTime();
             }
